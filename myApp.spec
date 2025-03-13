@@ -5,7 +5,7 @@ a = Analysis(
     ['myApp.py'],
     pathex=[],
     binaries=[],
-    datas=[("C:/Users/Admin/Desktop/MMO/auto_write_form_IRS/.venv/Lib/site-packages/selenium_stealth", "selenium_stealth")],
+    datas=[('C:\\Users\\Admin\\Desktop\\MMO\\auto_write_form_IRS\\.venv\\Lib\\site-packages\\selenium_stealth', 'selenium_stealth')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
