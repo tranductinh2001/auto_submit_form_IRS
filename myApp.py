@@ -57,12 +57,10 @@ class UI(QMainWindow):
             QMessageBox.information(self, "Thông báo", "Chưa chọn file")
             return
         try:            
-            df = pd.read_excel(self.file_path, engine="openpyxl")
-
-            # Hoặc hiển thị từng dòng
+            df = pd.read_excel(self.file_path, engine="openpyxl", dtype=str)
             for index, row in df.iterrows():
                 data = row.to_dict()
-                IRSFormPage().action_form(data, index+1, self.file_path)
+                IRSFormPage().action_form(data, index + 1, self.file_path)
                 time.sleep(random.uniform(25, 50))
         except Exception as e:
             QMessageBox.information(self, "Thông báo", f"Có lỗi xảy ra: {str(e)}")
@@ -430,4 +428,4 @@ if __name__ == "__main__":
         app.exec()
     except KeyboardInterrupt:
         sys.exit()
-            
+            29
