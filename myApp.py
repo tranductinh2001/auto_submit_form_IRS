@@ -10,7 +10,6 @@ from PyQt6.QtCore import QStringListModel, QAbstractItemModel
 from PyQt6.QtGui import QStandardItemModel, QStandardItem
 import pandas as pd
 import random
-#cài config selenium
 from seleniumwire import webdriver  # Chặn request
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -61,7 +60,7 @@ class UI(QMainWindow):
             for index, row in df.iterrows():
                 data = row.to_dict()
                 IRSFormPage().action_form(data, index + 1, self.file_path)
-                time.sleep(random.uniform(25, 50))
+                time.sleep(random.uniform(5, 10))
         except Exception as e:
             QMessageBox.information(self, "Thông báo", f"Có lỗi xảy ra: {str(e)}")
             
@@ -218,8 +217,19 @@ class IRSFormPage:
         
         self.select_radio("//input[@type='radio' and @name='radioAnotherAddress' and @id='radioAnotherAddress_n' and @value='false']")
         self.click_button("//input[@type='submit' and @value='Continue >>']", "Continue") 
-        
+    
     def auto_fill_form_Details_4(self):
+        try:
+            # Đợi tối đa 5 giây để tìm phần tử, nếu không thấy thì bỏ qua
+            submit_button = WebDriverWait(self.driver, 5).until(
+                EC.presence_of_element_located((By.XPATH, '//input[@type="submit" and @name="Submit" and @value="Accept Database Version"]'))
+            )
+            if submit_button:  
+                submit_button.click()
+                print("✅ Đã nhấn nút 'Accept Database Version'")
+        except Exception:
+            print("⚠️ Không tìm thấy nút 'Accept Database Version', tiếp tục thực hiện các bước tiếp theo.")
+
         month_ramdom = str(random.randint(1,9))
         year_ramdom = str(random.randint(2022,2024))
         
@@ -428,4 +438,4 @@ if __name__ == "__main__":
         app.exec()
     except KeyboardInterrupt:
         sys.exit()
-            29
+            
