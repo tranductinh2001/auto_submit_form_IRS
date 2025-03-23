@@ -1,0 +1,1 @@
+pyinstaller --onefile --noconsole --add-data "C:\Users\Admin\OneDrive\Desktop\MMO_tool\auto_submit_form_IRS\venv\Lib\site-packages\selenium_stealth\js;selenium_stealth/js/" myApp.py

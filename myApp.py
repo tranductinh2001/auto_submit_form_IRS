@@ -1,6 +1,7 @@
 import os
 import glob
 import sys
+
 import random
 import time
 from colorama import *
@@ -22,7 +23,7 @@ import openpyxl
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium_stealth import stealth
-from urllib.parse import urlparse
+# from urllib.parse import urlparse
 import undetected_chromedriver as uc
 
 from time import sleep
@@ -58,16 +59,33 @@ class UI(QMainWindow):
         try:            
             df = pd.read_excel(self.file_path, engine="openpyxl", dtype=str)
             for index, row in df.iterrows():
-                data = row.to_dict()
-                IRSFormPage().action_form(data, index + 1, self.file_path)
-                time.sleep(random.uniform(5, 10))
+                try:
+                    data = row.to_dict()
+                    IRSFormPage().action_form(data, index + 1, self.file_path)
+                    time.sleep(random.uniform(5, 10))
+                except Exception as row_error:
+                    stringError = str(row_error)
+                    # Mở file Excel
+                    workbook = openpyxl.load_workbook(self.file_path)
+                    sheet = workbook.active
+
+                    column_letter = "K"  # Cột cần ghi (ví dụ: B)
+                    sheet[f"{column_letter}{index + 1}"] = "dòng này đã lỗi => "+stringError
+
+                    # Lưu lại file Excel
+                    workbook.save(self.file_path)
+                    workbook.close()
+                    print(f"❌ Dừng xử lý dòng {index} do lỗi: {row_error}")
+                    continue
         except Exception as e:
             QMessageBox.information(self, "Thông báo", f"Có lỗi xảy ra: {str(e)}")
             
 class IRSFormPage:
     def __init__(self):
         
-        download_path = r"C:\Users\Admin\Downloads\IRS"  # Thư mục tải file
+        # download_path = r"C:\Users\Admin\Downloads\IRS"  # Thư mục tải file
+        download_path = os.path.join(os.path.expanduser("~"), "Downloads", "IRS")
+        os.makedirs(download_path, exist_ok=True)  # Tạo thư mục nếu chưa tồn tại
         # Cấu hình Selenium
         user_agents = [
             # Chrome trên Windows
@@ -114,7 +132,7 @@ class IRSFormPage:
         chrome_options.add_argument("--start-maximized")  # Mở rộng cửa sổ
         chrome_options.add_argument("--disable-gpu")    
         prefs = {
-            "download.default_directory": download_path,  # Đặt thư mục tải file
+            "download.default_directory": str(download_path),  # Đặt thư mục tải file
             "download.prompt_for_download": False,          # Không hỏi xác nhận tải file
             "download.directory_upgrade": True,             # Cập nhật thư mục nếu cần
             "plugins.always_open_pdf_externally": True        # Nếu tải PDF, sẽ tải về thay vì mở trong trình duyệt
@@ -142,7 +160,7 @@ class IRSFormPage:
             self.driver.delete_all_cookies() 
                       
             self.driver.get("https://sa.www4.irs.gov/modiein/individual/index.jsp")
-            time.sleep(1)            #identifi Page
+            time.sleep(1)           
             try:
                 alert = self.driver.switch_to.alert  # Chuyển sang alert
                 print("Popup message:", alert.text)  # In ra nội dung popup
@@ -154,14 +172,22 @@ class IRSFormPage:
             
             self.click_button("//input[@type='submit' and @value='Begin Application >>']", "Begin Application")
         
-            self.select_radio("//input[@type='radio' and @id='sole']")
+            self.select_radio("//input[@type='radio' and @id='limited']")
                 
             self.click_button("//input[@type='submit' and @value='Continue >>']", "Continue")
-    
-            self.select_radio("//input[@type='radio' and @value='30' and @id='sole']")
-                
+
             self.click_button("//input[@type='submit' and @value='Continue >>']", "Continue")
+
+            # self.select_radio("//input[@type='radio' and @value='30' and @id='sole']")
+                
+            # self.click_button("//input[@type='submit' and @value='Continue >>']", "Continue")
+
+            self.fill_form_input("numbermem", 1)
+
+            self.select_state("state", data["STATE"])
         
+            self.click_button("//input[@type='submit' and @value='Continue >>']", "Continue")
+
             self.click_button("//input[@type='submit' and @value='Continue >>']", "Continue")
                 
             self.select_radio("//input[@type='radio' and @name='radioReasonForApplying']")
@@ -170,7 +196,7 @@ class IRSFormPage:
         
             self.auto_fill_form_Authenticate_2(data)
             self.auto_fill_form_Addresses_3(data)
-            self.auto_fill_form_Details_4()
+            self.auto_fill_form_Details_4(data)
             self.auto_fill_form_EIN_Confirmation_5(index, file_path, data)
         except Exception as e:
             print(f"❌ Dừng xử lý dòng {index} do lỗi: {e}")
@@ -184,8 +210,8 @@ class IRSFormPage:
             return  # Thoát action_form(), quay lại vòng lặp tiếp theo
                    
     def auto_fill_form_Authenticate_2(self, data):
-        self.fill_form_input("applicantFirstName", data["FN"])
-        self.fill_form_input("applicantLastName", data["LN"])
+        self.fill_form_input("responsiblePartyFirstName", data["FN"])
+        self.fill_form_input("responsiblePartyLastName", data["LN"])
         # Chuyển SSN thành chuỗi và đảm bảo đủ 9 số
         ssn_str = str(data["SSN"]).zfill(9)
 
@@ -193,9 +219,9 @@ class IRSFormPage:
         ssn_part1 = ssn_str[:3]  # 3 số đầu
         ssn_part2 = ssn_str[3:5]  # 2 số giữa
         ssn_part3 = ssn_str[5:]   # 4 số cuối
-        self.fill_form_input("applicantSSN3", ssn_part1)
-        self.fill_form_input("applicantSSN2", ssn_part2)
-        self.fill_form_input("applicantSSN4", ssn_part3)
+        self.fill_form_input("responsiblePartySSN3", ssn_part1)
+        self.fill_form_input("responsiblePartySSN2", ssn_part2)
+        self.fill_form_input("responsiblePartySSN4", ssn_part3)
         
         #click checkbox
         self.select_radio("//input[@type='radio' and @name='tpdQuestion' and @id='iamsole']")
@@ -204,7 +230,7 @@ class IRSFormPage:
     def auto_fill_form_Addresses_3(self, data):
         self.fill_form_input("physicalAddressStreet", data["ADD"])
         self.fill_form_input("physicalAddressCity", data["CITY"])
-        self.select_state(data["STATE"])
+        self.select_state("physicalAddressState", data["STATE"])
         self.fill_form_input("physicalAddressZipCode", data["ZIP"])
         
         first3 = str(random.randint(100, 999))  # 3 số đầu
@@ -218,7 +244,7 @@ class IRSFormPage:
         self.select_radio("//input[@type='radio' and @name='radioAnotherAddress' and @id='radioAnotherAddress_n' and @value='false']")
         self.click_button("//input[@type='submit' and @value='Continue >>']", "Continue") 
     
-    def auto_fill_form_Details_4(self):
+    def auto_fill_form_Details_4(self, data):
         try:
             # Đợi tối đa 5 giây để tìm phần tử, nếu không thấy thì bỏ qua
             submit_button = WebDriverWait(self.driver, 5).until(
@@ -234,7 +260,11 @@ class IRSFormPage:
         year_ramdom = str(random.randint(2022,2024))
         
         #page 1
+        # time.sleep(500)
         self.select_month(month_ramdom)
+        self.fill_form_input("businessOperationalLegalName", data["NAME LLC"])
+        # time.sleep(500)
+        self.select_state("articalsFiledState", data["STATE"])
         self.fill_form_input("BUSINESS_OPERATIONAL_YEAR_ID", year_ramdom)
         self.click_button("//input[@type='submit' and @value='Continue >>']", "Continue") 
         
@@ -282,8 +312,9 @@ class IRSFormPage:
         workbook.close()
 
         try:
-            download_path = Path("C:/Users/Admin/Downloads/IRS").resolve()
-            download_path.mkdir(parents=True, exist_ok=True)
+            # Định nghĩa thư mục tải về
+            download_path = Path(os.path.join(os.path.expanduser("~"), "Downloads", "IRS"))
+            download_path.mkdir(parents=True, exist_ok=True) 
             
             pdf_link_element = self.driver.find_element(By.XPATH, "//*[contains(@href, '.pdf')]")
             self.driver.execute_script("arguments[0].target='_self';", pdf_link_element)
@@ -382,12 +413,10 @@ class IRSFormPage:
         # Lưu lại file
         wb.save(file_name)
         print(f"✅ Dữ liệu đã được thêm vào '{file_name}'!")
-
-
     
-    def select_state(self, state):
+    def select_state(self,xpath, state):
         try:
-            dropdown = Select(self.driver.find_element(By.ID, "physicalAddressState"))
+            dropdown = Select(self.driver.find_element(By.ID, xpath))
             self.sleepRamdom()
             dropdown.select_by_value(state)
         except Exception as e:
@@ -428,8 +457,7 @@ class IRSFormPage:
             except Exception as e:
                 raise Exception(f"❌ Lỗi khi nhấn nút {description}: {e}")
 
-                
-            
+                           
 if __name__ == "__main__":
     try:
         app = QApplication([])
